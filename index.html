@@ -138,6 +138,7 @@
   [start, resume, restart].forEach(btn => btn && btn.addEventListener('click', () => setTimeout(startTimer, 0)));
   quit && quit.addEventListener('click', stopTimer);
   next && next.addEventListener('click', () => setTimeout(() => { if (byId('result') && getComputedStyle(byId('result')).display !== 'none') stopTimer(); }, 0));
+  next && next.addEventListener('click', () => setTimeout(() => { const review=byId('review'); if(review) review.dataset.enhanced='0'; if(window.enhanceResult) window.enhanceResult(); }, 150));
   document.addEventListener('change', e => { if (e.target.closest('#choices')) toast('Réponse enregistrée'); });
   document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal(); if(e.key==='ArrowRight' && byId('quiz') && getComputedStyle(byId('quiz')).display!=='none') byId('next')?.click(); if(e.key==='ArrowLeft' && byId('quiz') && getComputedStyle(byId('quiz')).display!=='none') byId('prev')?.click(); });
   new MutationObserver(enhanceResult).observe(document.body,{subtree:true,attributes:true,attributeFilter:['style']});
