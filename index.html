@@ -11,6 +11,8 @@
   let timerId = null;
   let remaining = 0;
   let running = false;
+  let activeFolder = 'all';
+  let allQuestions = null;
 
   const byId = id => document.getElementById(id);
   const readSettings = () => {
@@ -21,11 +23,12 @@
   const format = seconds => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 
   function addControls() {
+    if (!allQuestions && window.DATA) allQuestions = window.DATA.slice();
     if (!document.getElementById('proUiStyle')) {
       const style = document.createElement('style'); style.id = 'proUiStyle';
       style.textContent = `.toast{position:fixed;right:22px;bottom:22px;z-index:20;padding:13px 17px;border:1px solid #3d6c91;border-radius:14px;background:#102a43;color:#edf5ff;box-shadow:0 14px 35px #0008;transform:translateY(20px);opacity:0;transition:.2s}.toast.show{transform:none;opacity:1}.modal-backdrop{position:fixed;inset:0;z-index:15;display:grid;place-items:center;padding:20px;background:#020914c9;backdrop-filter:blur(6px)}.modal{width:min(720px,100%);max-height:85vh;overflow:auto;padding:24px;border:1px solid #315677;border-radius:22px;background:#0d1d31;box-shadow:0 25px 80px #000b}.modal h2{margin-top:0}.question-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:7px}.question-grid button{padding:9px 4px;border-radius:9px;background:#1a304a;color:#eaf4ff;border:1px solid #294a68}.question-grid button.done{border-color:#55c99b;color:#72e0ad}.question-grid button.current{background:#3b9fce;color:#06111e}.toolbar-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}@media(max-width:600px){.modal{padding:18px}.toast{right:12px;left:12px;bottom:12px;text-align:center}}`;
       document.head.appendChild(style);
-      const detailStyle=document.createElement('style'); detailStyle.textContent='.review-top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}.review-index{font:12px ui-monospace,Consolas,monospace;color:var(--orange)}.confidence{font-size:11px;padding:5px 8px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}details{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}summary{cursor:pointer;color:var(--cyan);font-weight:700}.choice-analysis{padding-left:20px;color:var(--muted);line-height:1.55}.choice-analysis li.is-correct{color:var(--green);font-weight:700}.reference{font-size:13px;color:var(--muted);line-height:1.5}.reference a{color:var(--cyan);margin-left:5px}.tutorial-list{padding-left:22px;color:var(--ink);line-height:1.8}.tutorial-list li{margin:8px 0}'; document.head.appendChild(detailStyle);
+      const detailStyle=document.createElement('style'); detailStyle.textContent='.review-top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}.review-index{font:12px ui-monospace,Consolas,monospace;color:var(--orange)}.confidence{font-size:11px;padding:5px 8px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}details{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}summary{cursor:pointer;color:var(--cyan);font-weight:700}.choice-analysis{padding-left:20px;color:var(--muted);line-height:1.55}.choice-analysis li.is-correct{color:var(--green);font-weight:700}.reference{font-size:13px;color:var(--muted);line-height:1.5}.reference a{color:var(--cyan);margin-left:5px}.tutorial-list{padding-left:22px;color:var(--ink);line-height:1.8}.tutorial-list li{margin:8px 0}.category-panel{grid-column:1/-1;margin-top:22px;padding:20px;border:1px solid var(--line);border-radius:18px;background:#0c1b2d}.category-panel h2{margin:7px 0}.category-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-top:15px}.category-card{display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-align:left;padding:15px;border:1px solid var(--line);border-radius:14px;background:#142b45;color:var(--ink);transition:.18s}.category-card:hover,.category-card.pulse{border-color:var(--cyan);transform:translateY(-2px)}.category-card strong{font-size:25px}.category-card span:last-child{color:var(--muted);font-size:12px}.category-kicker{font:11px ui-monospace,Consolas,monospace;color:var(--cyan)}.category-card.exam{background:linear-gradient(135deg,#1b4565,#183157)}'; document.head.appendChild(detailStyle);
     }
     if (!byId('toast')) { const toast=document.createElement('div'); toast.id='toast'; toast.className='toast'; toast.setAttribute('aria-live','polite'); document.body.appendChild(toast); }
     const homeActions = document.querySelector('#home .actions');
@@ -38,6 +41,7 @@
     if (homeActions && !byId('tutorialButton')) {
       const tutorial=document.createElement('button'); tutorial.id='tutorialButton'; tutorial.className='secondary'; tutorial.textContent='Comment ça marche ?'; homeActions.appendChild(tutorial); tutorial.onclick=showTutorial;
     }
+    addCategoryPanel();
     const home = byId('home');
     if (home && !byId('timerConfig')) {
       const box = document.createElement('div');
@@ -62,6 +66,22 @@
       toolbar.appendChild(plan); plan.onclick=showPlan;
     }
   }
+  function progressData() { try { return JSON.parse(localStorage.getItem('ssiap3_progress') || '{}'); } catch (_) { return {}; } }
+  function addCategoryPanel() {
+    const home=byId('home'); if(!home || byId('categoryPanel') || !allQuestions) return;
+    const counts={}; allQuestions.forEach(q=>counts[q.source_folder]=(counts[q.source_folder]||0)+1); const progress=progressData();
+    const panel=document.createElement('div'); panel.id='categoryPanel'; panel.className='category-panel';
+    panel.innerHTML='<div class="eyebrow">Votre parcours</div><h2>Choisissez votre entraînement</h2><p class="sub">Progressez série par série, puis testez-vous sur l’examen complet.</p><div class="category-grid"></div>';
+    home.querySelector('.stats').before(panel); const grid=panel.querySelector('.category-grid');
+    Object.keys(counts).sort((a,b)=>Number(a)-Number(b)).forEach(folder=>{ const done=progress[folder]?.completed||0; const total=counts[folder]; const card=document.createElement('button'); card.className='category-card'; card.innerHTML=`<span class="category-kicker">SÉRIE ${folder}</span><strong>${done}/${total}</strong><span>${done?'Progression enregistrée':'40 questions d’entraînement'}</span>`; card.onclick=()=>launchCategory(folder); grid.appendChild(card); });
+    const exam=document.createElement('button'); exam.className='category-card exam'; exam.innerHTML='<span class="category-kicker">EXAMEN BLANC</span><strong>200</strong><span>Conditions complètes et chronométrées</span>'; exam.onclick=()=>launchCategory('all'); grid.appendChild(exam);
+  }
+  function launchCategory(folder) {
+    if(!allQuestions) allQuestions=window.DATA.slice(); activeFolder=String(folder); localStorage.setItem('ssiap3_active_folder',activeFolder);
+    const selected=activeFolder==='all'?allQuestions:allQuestions.filter(q=>String(q.source_folder)===activeFolder); window.DATA.splice(0,window.DATA.length,...selected); closeModal();
+    const originalStart=window.start; if(typeof originalStart==='function') originalStart(); else byId('start')?.click();
+  }
+  function showCategoryChooser() { addControls(); const p=byId('categoryPanel'); if(p){p.scrollIntoView({behavior:'smooth',block:'center'}); p.classList.add('pulse'); setTimeout(()=>p.classList.remove('pulse'),900);} }
   function toast(message) { const el=byId('toast'); if(!el) return; el.textContent=message; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),1800); }
   function closeModal() { const m=byId('modalBackdrop'); if(m) m.remove(); }
   function showResetConfirm() {
@@ -71,7 +91,7 @@
     modal.innerHTML='<div class="eyebrow">Réinitialisation</div><h2>Repartir de zéro ?</h2><p class="sub">Toutes les réponses enregistrées et la progression seront effacées. Cette action est irréversible.</p><div class="actions"><button class="secondary" id="cancelReset">Annuler</button><button id="confirmReset">Réinitialiser</button></div>';
     back.appendChild(modal); document.body.appendChild(back);
     byId('cancelReset').onclick=closeModal;
-    byId('confirmReset').onclick=()=>{ localStorage.removeItem('ssiap3_answers'); localStorage.removeItem(SETTINGS_KEY); window.location.reload(); };
+    byId('confirmReset').onclick=()=>{ localStorage.removeItem('ssiap3_answers'); localStorage.removeItem(SETTINGS_KEY); localStorage.removeItem('ssiap3_progress'); window.location.reload(); };
   }
   function showTutorial() {
     closeModal(); const back=document.createElement('div'); back.id='modalBackdrop'; back.className='modal-backdrop';
@@ -100,6 +120,8 @@
   function enhanceResult() {
     const review=byId('review'); if(!review || review.dataset.enhanced==='1' || !window.DATA) return;
     const state=window.getQuizState ? window.getQuizState() : {answers:{}}; review.dataset.enhanced='1';
+    const total=window.DATA.length, score=window.DATA.reduce((n,q,i)=>n+      +(((state.answers?.[i]||[]).slice().sort().join(','))===((q.correct||[]).slice().sort().join(','))?1:0),0);
+    if(activeFolder!=='all'){ const p=progressData(); p[activeFolder]={completed:score,total,score}; localStorage.setItem('ssiap3_progress',JSON.stringify(p)); }
     const intro=byId('result')?.querySelector('.sub'); if(intro) intro.textContent='Ouvrez chaque encadré « Pourquoi ? » pour comprendre la réponse, analyser les choix et consulter la référence proposée.';
     review.innerHTML=window.DATA.map((q,i)=>{
       const a=(state.answers?.[i]||[]).slice().sort().join(','), c=(q.correct||[]).slice().sort().join(','), ok=a&&a===c, p=pedagogy(q);
@@ -135,6 +157,8 @@
 
   addControls();
   const start = byId('start'), resume = byId('resume'), restart = byId('restart'), quit = byId('quit'), next = byId('next');
+  if(start) { start.textContent='Choisir une série'; start.onclick=showCategoryChooser; }
+  if(resume) { resume.textContent='Voir mon parcours'; resume.onclick=showCategoryChooser; }
   [start, resume, restart].forEach(btn => btn && btn.addEventListener('click', () => setTimeout(startTimer, 0)));
   quit && quit.addEventListener('click', stopTimer);
   next && next.addEventListener('click', () => setTimeout(() => { if (byId('result') && getComputedStyle(byId('result')).display !== 'none') stopTimer(); }, 0));
