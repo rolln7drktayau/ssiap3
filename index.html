@@ -21,6 +21,12 @@
   const format = seconds => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 
   function addControls() {
+    if (!document.getElementById('proUiStyle')) {
+      const style = document.createElement('style'); style.id = 'proUiStyle';
+      style.textContent = `.toast{position:fixed;right:22px;bottom:22px;z-index:20;padding:13px 17px;border:1px solid #3d6c91;border-radius:14px;background:#102a43;color:#edf5ff;box-shadow:0 14px 35px #0008;transform:translateY(20px);opacity:0;transition:.2s}.toast.show{transform:none;opacity:1}.modal-backdrop{position:fixed;inset:0;z-index:15;display:grid;place-items:center;padding:20px;background:#020914c9;backdrop-filter:blur(6px)}.modal{width:min(720px,100%);max-height:85vh;overflow:auto;padding:24px;border:1px solid #315677;border-radius:22px;background:#0d1d31;box-shadow:0 25px 80px #000b}.modal h2{margin-top:0}.question-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:7px}.question-grid button{padding:9px 4px;border-radius:9px;background:#1a304a;color:#eaf4ff;border:1px solid #294a68}.question-grid button.done{border-color:#55c99b;color:#72e0ad}.question-grid button.current{background:#3b9fce;color:#06111e}.toolbar-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}@media(max-width:600px){.modal{padding:18px}.toast{right:12px;left:12px;bottom:12px;text-align:center}}`;
+      document.head.appendChild(style);
+    }
+    if (!byId('toast')) { const toast=document.createElement('div'); toast.id='toast'; toast.className='toast'; toast.setAttribute('aria-live','polite'); document.body.appendChild(toast); }
     const homeActions = document.querySelector('#home .actions');
     if (homeActions && !byId('resetAll')) {
       const reset = document.createElement('button');
@@ -52,6 +58,20 @@
       const pause = document.createElement('button'); pause.id = 'timerPause'; pause.className = 'secondary'; pause.textContent = 'Pause';
       toolbar.appendChild(pause); pause.onclick = () => { running ? pauseTimer() : resumeTimer(); };
     }
+    if (toolbar && !byId('planButton')) {
+      const plan = document.createElement('button'); plan.id='planButton'; plan.className='secondary'; plan.textContent='Plan';
+      toolbar.appendChild(plan); plan.onclick=showPlan;
+    }
+  }
+  function toast(message) { const el=byId('toast'); if(!el) return; el.textContent=message; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),1800); }
+  function closeModal() { const m=byId('modalBackdrop'); if(m) m.remove(); }
+  function showPlan() {
+    closeModal(); const state=window.getQuizState ? window.getQuizState() : {index:0,answers:{}};
+    const back=document.createElement('div'); back.id='modalBackdrop'; back.className='modal-backdrop';
+    const modal=document.createElement('div'); modal.className='modal';
+    modal.innerHTML='<h2>Plan des questions</h2><p class="sub">Accédez directement à une question. Les réponses sont enregistrées automatiquement.</p><div class="question-grid" id="questionGrid"></div><div class="actions"><button class="secondary" id="closePlan">Fermer</button></div>';
+    back.appendChild(modal); document.body.appendChild(back); byId('closePlan').onclick=closeModal;
+    const grid=byId('questionGrid'); (window.DATA||[]).forEach((q,i)=>{ const b=document.createElement('button'); b.textContent=i+1; if(state.answers&&state.answers[i]?.length)b.classList.add('done'); if(i===state.index)b.classList.add('current'); b.onclick=()=>{ if(window.goToQuestion) window.goToQuestion(i); closeModal(); }; grid.appendChild(b); });
   }
   function saveConfig() {
     const minutes = Math.max(1, Math.min(240, Number(byId('timerMinutes').value) || 60));
@@ -84,5 +104,7 @@
   [start, resume, restart].forEach(btn => btn && btn.addEventListener('click', () => setTimeout(startTimer, 0)));
   quit && quit.addEventListener('click', stopTimer);
   next && next.addEventListener('click', () => setTimeout(() => { if (byId('result') && getComputedStyle(byId('result')).display !== 'none') stopTimer(); }, 0));
+  document.addEventListener('change', e => { if (e.target.closest('#choices')) toast('Réponse enregistrée'); });
+  document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal(); if(e.key==='ArrowRight' && byId('quiz') && getComputedStyle(byId('quiz')).display!=='none') byId('next')?.click(); if(e.key==='ArrowLeft' && byId('quiz') && getComputedStyle(byId('quiz')).display!=='none') byId('prev')?.click(); });
 })();
 </script></body></html>
