@@ -186,6 +186,12 @@
   const ACTIVE_PROFILE = 'ssiap3_active_profile';
   const PROFILE_BASES = ['ssiap3_answers','ssiap3_session','ssiap3_progress','ssiap3_timer_settings'];
   const $ = id => document.getElementById(id);
+  const choiceLetter = n => { const i=Number(n)-1; return i>=0 && i<26 ? String.fromCharCode(65+i) : String(n); };
+  function normalizeCorpus() {
+    if(!window.DATA || window.DATA.__normalizedLabels) return;
+    window.DATA.forEach(q=>{ q.question=String(q.question||'').replace(/\b(?:TGV|IGN)\b/g,'IGH'); (q.options||[]).forEach(o=>{o.text=String(o.text||'').replace(/\b(?:TGV|IGN)\b/g,'IGH');}); });
+    window.DATA.__normalizedLabels=true;
+  }
   const getProfiles = () => { try { return JSON.parse(localStorage.getItem(PROFILE_INDEX) || '["Invité"]'); } catch (_) { return ['Invité']; } };
   const active = () => localStorage.getItem(ACTIVE_PROFILE) || 'Invité';
   const safe = value => String(value).replace(/[^\p{L}\p{N}_-]+/gu, '_').slice(0,40) || 'profil';
@@ -248,11 +254,15 @@
     if($('saved')) $('saved').textContent=$('saved').classList.contains('is-recorded')?text.saved:text.unsaved;
   }
   function updateLanguageDynamic() {
+    normalizeCorpus();
     const en=language==='en', state=window.getQuizState&&window.getQuizState(), q=window.DATA&&window.DATA[state?.index||0];
     document.querySelectorAll('#categoryPanel .category-kicker').forEach(el=>{if(el.textContent.includes('EXAMEN')||el.textContent.includes('FULL EXAM'))el.textContent=en?'FULL EXAM':'EXAMEN BLANC';else{const n=el.textContent.match(/\d+/)?.[0]||'';el.textContent=`SECTION ${n}`;}});
     if(!q) return;
     const n=String(q.id||'').split('-').pop()||((state?.index||0)+1); if($('qid'))$('qid').textContent=`Section ${q.source_folder||''} · Question ${n}`; if($('series'))$('series').textContent=`Section ${q.source_folder||''} · ${en?'answers hidden':'correction masquée'}`; if($('counter'))$('counter').textContent=`Question ${(state?.index||0)+1} / ${window.DATA.length}`; if($('saved')){$('saved').textContent=$('saved').classList.contains('is-recorded')?(en?'Answer saved':'Réponse enregistrée'):(en?'Answer not saved':'Réponse non enregistrée');}
+    if($('qtext')) $('qtext').textContent=q.question||'';
+    document.querySelectorAll('#choices .choice').forEach(choice=>{const input=choice.querySelector('input');const label=choice.querySelector('b');if(input&&label)label.textContent=`${choiceLetter(input.value)}.`;});
     document.querySelectorAll('#review .review-item').forEach((item,i)=>{const rq=window.DATA[i];const label=item.querySelector('.review-index');if(label&&rq)label.textContent=`Section ${rq.source_folder||''} · Question ${i+1}`;});
+    document.querySelectorAll('#review .review-item').forEach(item=>{item.querySelectorAll('.answer,.choice-analysis li').forEach(el=>{el.textContent=el.textContent.replace(/(Correction\s*:\s*|Votre réponse\s*:\s*)([\d,\s]+)/gi,(_,prefix,nums)=>prefix+nums.split(',').map(v=>choiceLetter(v.trim())).join(', ')).replace(/^\s*(\d+)\./,(_,n)=>`${choiceLetter(n)}.`);});item.querySelectorAll('.explain').forEach(el=>el.textContent=el.textContent.replace(/(réponses correctes sont\s*:\s*)([\d,\s]+)/i,(_,prefix,nums)=>prefix+nums.split(',').map(v=>choiceLetter(v.trim())).join(', '));});
   }
   function addHomeButtons() {
     if($('result')) { const actions=$('result').querySelector('.score > div:last-child'); if(actions && !$('resultHome')) { const b=document.createElement('button'); b.id='resultHome'; b.className='secondary'; b.textContent='Accueil'; b.onclick=()=>{ $('result').style.display='none'; $('home').style.display='grid'; window.scrollTo({top:0,behavior:'smooth'}); }; actions.appendChild(b); } }
@@ -282,7 +292,7 @@
     const modal=document.querySelector('#modalBackdrop .modal'); if(!modal || modal.dataset.guide==='1') return;
     modal.dataset.guide='1'; const en=language==='en'; modal.innerHTML=en?'<div class="eyebrow">Quick guide</div><h2>How to use the quiz</h2><ol class="tutorial-list"><li><b>Home:</b> choose a series, local profile, theme and, if needed, enable the timer.</li><li><b>Question:</b> select one or more answers. The badge confirms that your answer was saved.</li><li><b>Keyboard:</b> press <b>Enter</b> to save and move on; use <b>←</b> and <b>→</b> to navigate.</li><li><b>Progress:</b> use the question plan to return to a question and see answered items.</li><li><b>Correction:</b> at the end, review your score, correct answers, “Why?”, choice analysis and references.</li><li><b>Session:</b> Resume restores your path. A local profile separates users on the same device.</li></ol><p class="sub">Data stays in this browser. GitHub Pages does not synchronize answers between devices.</p><div class="actions"><button id="closeTutorial">Got it</button></div>':'<div class="eyebrow">Mini-tutoriel</div><h2>Comment utiliser le QCM</h2><ol class="tutorial-list"><li><b>Accueil :</b> choisissez une série, un profil local, un thème et, si besoin, activez le timer.</li><li><b>Question :</b> cochez une ou plusieurs réponses. Le badge indique immédiatement si la réponse est enregistrée.</li><li><b>Clavier :</b> appuyez sur <b>Entrée</b> pour enregistrer et passer à la suite ; utilisez <b>←</b> et <b>→</b> pour naviguer.</li><li><b>Progression :</b> utilisez le plan des questions pour retrouver une question et visualiser les réponses déjà enregistrées.</li><li><b>Correction :</b> à la fin, le score, les bonnes réponses, le « Pourquoi ? », l’analyse de chaque choix et les références sont affichés.</li><li><b>Session :</b> « Reprendre » restaure votre parcours. Un profil local permet de séparer plusieurs utilisateurs sur le même appareil.</li></ol><p class="sub">Les données restent dans le navigateur. GitHub Pages ne synchronise pas les réponses entre appareils.</p><div class="actions"><button id="closeTutorial">J’ai compris</button></div>'; $('closeTutorial').onclick=()=>document.getElementById('modalBackdrop')?.remove();
   }
-  migrateProfile(); addProfileControls(); addThemeControl(); addLanguageControl(); addHomeButtons(); enhanceResponsive(); applyLanguage();
+  normalizeCorpus(); migrateProfile(); addProfileControls(); addThemeControl(); addLanguageControl(); addHomeButtons(); enhanceResponsive(); applyLanguage();
   document.addEventListener('click',e=>{ if(e.target.closest('#tutorialButton')) setTimeout(replaceTutorialContent,0); });
   document.addEventListener('click',e=>{ if(e.target.closest('#confirmReset')) PROFILE_BASES.forEach(base=>localStorage.removeItem(key(base))); },true);
   document.addEventListener('keydown',e=>{
