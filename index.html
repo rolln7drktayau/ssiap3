@@ -25,7 +25,7 @@
       const style = document.createElement('style'); style.id = 'proUiStyle';
       style.textContent = `.toast{position:fixed;right:22px;bottom:22px;z-index:20;padding:13px 17px;border:1px solid #3d6c91;border-radius:14px;background:#102a43;color:#edf5ff;box-shadow:0 14px 35px #0008;transform:translateY(20px);opacity:0;transition:.2s}.toast.show{transform:none;opacity:1}.modal-backdrop{position:fixed;inset:0;z-index:15;display:grid;place-items:center;padding:20px;background:#020914c9;backdrop-filter:blur(6px)}.modal{width:min(720px,100%);max-height:85vh;overflow:auto;padding:24px;border:1px solid #315677;border-radius:22px;background:#0d1d31;box-shadow:0 25px 80px #000b}.modal h2{margin-top:0}.question-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(42px,1fr));gap:7px}.question-grid button{padding:9px 4px;border-radius:9px;background:#1a304a;color:#eaf4ff;border:1px solid #294a68}.question-grid button.done{border-color:#55c99b;color:#72e0ad}.question-grid button.current{background:#3b9fce;color:#06111e}.toolbar-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}@media(max-width:600px){.modal{padding:18px}.toast{right:12px;left:12px;bottom:12px;text-align:center}}`;
       document.head.appendChild(style);
-      const detailStyle=document.createElement('style'); detailStyle.textContent='.review-top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}.review-index{font:12px ui-monospace,Consolas,monospace;color:var(--orange)}.confidence{font-size:11px;padding:5px 8px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}details{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}summary{cursor:pointer;color:var(--cyan);font-weight:700}.choice-analysis{padding-left:20px;color:var(--muted);line-height:1.55}.choice-analysis li.is-correct{color:var(--green);font-weight:700}.reference{font-size:13px;color:var(--muted);line-height:1.5}.reference a{color:var(--cyan);margin-left:5px}'; document.head.appendChild(detailStyle);
+      const detailStyle=document.createElement('style'); detailStyle.textContent='.review-top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}.review-index{font:12px ui-monospace,Consolas,monospace;color:var(--orange)}.confidence{font-size:11px;padding:5px 8px;border:1px solid var(--line);border-radius:999px;color:var(--muted)}details{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}summary{cursor:pointer;color:var(--cyan);font-weight:700}.choice-analysis{padding-left:20px;color:var(--muted);line-height:1.55}.choice-analysis li.is-correct{color:var(--green);font-weight:700}.reference{font-size:13px;color:var(--muted);line-height:1.5}.reference a{color:var(--cyan);margin-left:5px}.tutorial-list{padding-left:22px;color:var(--ink);line-height:1.8}.tutorial-list li{margin:8px 0}'; document.head.appendChild(detailStyle);
     }
     if (!byId('toast')) { const toast=document.createElement('div'); toast.id='toast'; toast.className='toast'; toast.setAttribute('aria-live','polite'); document.body.appendChild(toast); }
     const homeActions = document.querySelector('#home .actions');
@@ -34,6 +34,9 @@
       reset.id = 'resetAll'; reset.className = 'secondary'; reset.textContent = 'Réinitialiser le QCM';
       homeActions.appendChild(reset);
       reset.onclick = () => showResetConfirm();
+    }
+    if (homeActions && !byId('tutorialButton')) {
+      const tutorial=document.createElement('button'); tutorial.id='tutorialButton'; tutorial.className='secondary'; tutorial.textContent='Comment ça marche ?'; homeActions.appendChild(tutorial); tutorial.onclick=showTutorial;
     }
     const home = byId('home');
     if (home && !byId('timerConfig')) {
@@ -70,6 +73,12 @@
     byId('cancelReset').onclick=closeModal;
     byId('confirmReset').onclick=()=>{ localStorage.removeItem('ssiap3_answers'); localStorage.removeItem(SETTINGS_KEY); window.location.reload(); };
   }
+  function showTutorial() {
+    closeModal(); const back=document.createElement('div'); back.id='modalBackdrop'; back.className='modal-backdrop';
+    const modal=document.createElement('div'); modal.className='modal';
+    modal.innerHTML='<div class="eyebrow">Mini-tutoriel</div><h2>Réussir sa séance de révision</h2><ol class="tutorial-list"><li><b>Répondez</b> à chaque question sans chercher la correction.</li><li><b>Enregistrez</b> une ou plusieurs réponses selon la question.</li><li><b>Naviguez</b> avec les boutons, les flèches du clavier ou le bouton Plan.</li><li><b>Validez</b> le QCM à la fin : les réponses, explications et références apparaîtront.</li><li><b>Révisez</b> chaque encadré « Pourquoi ? » et consultez les liens réglementaires.</li></ol><p class="sub">Le score mesure la mémorisation ; les explications servent à comprendre et progresser.</p><div class="actions"><button id="closeTutorial">Commencer</button></div>';
+    back.appendChild(modal); document.body.appendChild(back); byId('closeTutorial').onclick=closeModal;
+  }
   function showPlan() {
     closeModal(); const state=window.getQuizState ? window.getQuizState() : {index:0,answers:{}};
     const back=document.createElement('div'); back.id='modalBackdrop'; back.className='modal-backdrop';
@@ -91,6 +100,7 @@
   function enhanceResult() {
     const review=byId('review'); if(!review || review.dataset.enhanced==='1' || !window.DATA) return;
     const state=window.getQuizState ? window.getQuizState() : {answers:{}}; review.dataset.enhanced='1';
+    const intro=byId('result')?.querySelector('.sub'); if(intro) intro.textContent='Ouvrez chaque encadré « Pourquoi ? » pour comprendre la réponse, analyser les choix et consulter la référence proposée.';
     review.innerHTML=window.DATA.map((q,i)=>{
       const a=(state.answers?.[i]||[]).slice().sort().join(','), c=(q.correct||[]).slice().sort().join(','), ok=a&&a===c, p=pedagogy(q);
       const choices=(q.options||[]).map(o=>`<li class="${(q.correct||[]).includes(o.n)?'is-correct':''}"><b>${o.n}.</b> ${esc(o.text)} — ${(q.correct||[]).includes(o.n)?'réponse retenue':'choix non retenu'}</li>`).join('');
@@ -131,5 +141,6 @@
   document.addEventListener('change', e => { if (e.target.closest('#choices')) toast('Réponse enregistrée'); });
   document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal(); if(e.key==='ArrowRight' && byId('quiz') && getComputedStyle(byId('quiz')).display!=='none') byId('next')?.click(); if(e.key==='ArrowLeft' && byId('quiz') && getComputedStyle(byId('quiz')).display!=='none') byId('prev')?.click(); });
   new MutationObserver(enhanceResult).observe(document.body,{subtree:true,attributes:true,attributeFilter:['style']});
+  window.enhanceResult=enhanceResult; setInterval(enhanceResult,500);
 })();
 </script></body></html>
