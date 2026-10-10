@@ -97,7 +97,7 @@
     timerId = setInterval(() => {
       if (!running) return;
       remaining--; draw();
-      if (remaining <= 0) { stopTimer(); alert('Temps écoulé. Le QCM va être corrigé.'); if (typeof window.finish === 'function') window.finish(); }
+      if (remaining <= 0) { stopTimer(); toast('Temps écoulé : correction en cours…'); if (typeof window.finish === 'function') window.finish(); }
     }, 1000);
   }
   function pauseTimer() { running = false; draw(); }
