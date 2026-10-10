@@ -262,7 +262,11 @@
     if($('qtext')) $('qtext').textContent=q.question||'';
     document.querySelectorAll('#choices .choice').forEach(choice=>{const input=choice.querySelector('input');const label=choice.querySelector('b');if(input&&label)label.textContent=`${choiceLetter(input.value)}.`;});
     document.querySelectorAll('#review .review-item').forEach((item,i)=>{const rq=window.DATA[i];const label=item.querySelector('.review-index');if(label&&rq)label.textContent=`Section ${rq.source_folder||''} · Question ${i+1}`;});
-    document.querySelectorAll('#review .review-item').forEach(item=>{item.querySelectorAll('.answer,.choice-analysis li').forEach(el=>{el.textContent=el.textContent.replace(/(Correction\s*:\s*|Votre réponse\s*:\s*)([\d,\s]+)/gi,(_,prefix,nums)=>prefix+nums.split(',').map(v=>choiceLetter(v.trim())).join(', ')).replace(/^\s*(\d+)\./,(_,n)=>`${choiceLetter(n)}.`);});item.querySelectorAll('.explain').forEach(el=>el.textContent=el.textContent.replace(/(réponses correctes sont\s*:\s*)([\d,\s]+)/i,(_,prefix,nums)=>prefix+nums.split(',').map(v=>choiceLetter(v.trim())).join(', '));});
+    document.querySelectorAll('#review .review-item').forEach(item=>{
+      item.querySelectorAll('.answer').forEach(el=>{ el.textContent=el.textContent.replace(/(Correction\s*:\s*|Votre réponse\s*:\s*)([\d,\s]+)/gi,(_,prefix,nums)=>prefix+nums.split(',').map(v=>choiceLetter(v.trim())).join(', ')); });
+      item.querySelectorAll('.choice-analysis li').forEach(el=>{ el.textContent=el.textContent.replace(/^\s*(\d+)\./,(_,n)=>`${choiceLetter(n)}.`); });
+      item.querySelectorAll('.explain').forEach(el=>{ el.textContent=el.textContent.replace(/(réponses correctes sont\s*:\s*)([\d,\s]+)/i,(_,prefix,nums)=>prefix+nums.split(',').map(v=>choiceLetter(v.trim())).join(', ')); });
+    });
   }
   function addHomeButtons() {
     if($('result')) { const actions=$('result').querySelector('.score > div:last-child'); if(actions && !$('resultHome')) { const b=document.createElement('button'); b.id='resultHome'; b.className='secondary'; b.textContent='Accueil'; b.onclick=()=>{ $('result').style.display='none'; $('home').style.display='grid'; window.scrollTo({top:0,behavior:'smooth'}); }; actions.appendChild(b); } }
